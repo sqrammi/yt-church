@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+const { google } = require('googleapis');
+
+const clientId = 'INSERT_CLIENT_ID_HERE';
+const clientSecret = 'INSERT_CLIENT_SECRET_HERE';
+
+const oauth2Client = new google.auth.OAuth2(
+  clientId,
+  clientSecret,
+  'http://localhost:3001',
+);
+
+// generate a url that asks permissions for Blogger and Google Calendar scopes
+const scopes = [
+  'https://www.googleapis.com/auth/youtube',
+  'https://www.googleapis.com/auth/youtube.upload',
+  'https://www.googleapis.com/auth/youtube.force-ssl',
+];
+
+const url = oauth2Client.generateAuthUrl({
+  // 'online' (default) or 'offline' (gets refresh_token)
+  access_type: 'offline',
+
+  // If you only need one scope you can pass it as a string
+  scope: scopes
+});
+
+exports.oauth2Client = oauth2Client;
+exports.url = url;

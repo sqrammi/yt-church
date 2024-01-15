@@ -1,0 +1,11 @@
+/api-key.txt
+/auth-code.txt
+/client-id.txt
+/credentials.json
+/id.txt
+/node_modules
+/refresh-token.txt
+
+/api.js
+/sheet.mjs
+/auth-app/src/creds.json

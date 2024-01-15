@@ -1,0 +1,3 @@
+* Remote Desktop password *changes* any time you change any option, i.e. disable VNC
+* Disable password on keyright by opening "seahorse", right click on Default keychain
+  and change password to blank
