@@ -28,7 +28,7 @@ const main = async () => {
     snippet: {
       scheduledStartTime: next.toISOString(),
       scheduledEndTime: nextEnd.toISOString(),
-      title: 'Test 1',
+      title: 'Draper 7th Ward Sacrament Meeting',
       description: 'Sacrament Meeting',
     },
     status: {

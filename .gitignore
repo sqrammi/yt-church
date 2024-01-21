@@ -1,11 +1,19 @@
+# Google Cloud Console API Key
 /api-key.txt
-/auth-code.txt
-/client-id.txt
+# Code required for viewers
+/code.txt
+# From Google Cloud Console Service Account
 /credentials.json
+# Youtube video ID
 /id.txt
+# For server
 /node_modules
+# From auth-code.js after getting code from auth-app
 /refresh-token.txt
 
+# From api.js.in (with client ID/secret inserted)
 /api.js
-/sheet.mjs
+# From auth-app/src/creds.json.in (with client ID/secret inserted)
 /auth-app/src/creds.json
+# From config.json.in
+/config.json

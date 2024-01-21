@@ -1,7 +1,9 @@
 import './App.css';
 import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 
-import { clientId, clientSecret } from './creds.json';
+import creds from './creds.json';
+
+const { clientId, clientSecret } = creds;
 
 const scopes = [
   'https://www.googleapis.com/auth/youtube',

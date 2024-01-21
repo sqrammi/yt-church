@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 const desiredDay = 0; // Sunday
-const desiredHour = 9; // 9:00 AM
-const desiredMinutes = 0; // 9:00 AM
+const desiredHour = 11; // 11:10 AM
+const desiredMinutes = 10;
 
 const now = new Date();
 let next = new Date();
