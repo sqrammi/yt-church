@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import { save } from './sheet.mjs';
+import { zoom } from './zoom.mjs';
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -51,12 +52,17 @@ app.get('*', cors(corsOptionsDelegate));
 app.use(express.json());
 
 app.use((req, res, next) => {
-//  console.log('got', req.url);
-  // For Safari, for now
-  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method !== 'OPTIONS' && !req.url.match(/^\/(snap|zoom|scene|broadcast)/))
+    console.log(req.method, req.url);
+  // TODO: Lock down
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Origin, Accept');
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT');
   next();
+});
+
+app.options((req, res, next) => {
+  res.send(200);
 });
 
 app.post('/login', async (req, res) => {
@@ -66,16 +72,60 @@ app.post('/login', async (req, res) => {
   res.send({ success: true });
 });
 
-app.post('/shot', async (req, res) => {
-  console.log('body', req.body);
+app.post('/snap', async (req, res) => {
   if (req.body?.password !== webPassword)
     return;
   if (obsConnected) {
-    res.set('Content-Type', 'image/jpeg');
-    const data = (await obs.call('GetSourceScreenshot', {
-      sourceName: 'Chapel', imageHeight: 240, imageFormat: "jpeg" })).imageData;
-    res.end(Buffer.from(atob(data.split('base64,')[1]), 'binary'));
-  }
+    try {
+      const data = (await obs.call('GetSourceScreenshot', {
+        sourceName: 'RTSP', imageHeight: 240, imageFormat: "jpeg" })).imageData;
+      res.set('Content-Type', 'image/jpeg');
+      res.end(Buffer.from(atob(data.split('base64,')[1]), 'binary'));
+    } catch (e) {
+      if (!e.message.match(/Failed to render screenshot/))
+        console.log('snap error', e);
+      res.set('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: false }));
+    }
+  } else console.log('obs not connected');
+});
+
+app.post('/zoom', async (req, res) => {
+  if (req.body?.password !== webPassword)
+    return;
+  await zoom({ ...req.body });
+});
+
+app.post('/scene', async (req, res) => {
+  if (req.body?.password !== webPassword)
+    return;
+  const { scene } = req.body;
+  if (obsConnected) {
+    try {
+      await obs.call('SetCurrentProgramScene', { sceneName: scene });
+    } catch (e) {
+      console.log('scene error', e);
+    }
+  } else console.log('obs not connected');
+
+  res.set('Content-Type', 'application/json');
+  res.end(JSON.stringify({ success: true }));
+});
+
+app.post('/broadcast', async (req, res) => {
+  if (req.body?.password !== webPassword)
+    return;
+  const { start } = req.body;
+  if (obsConnected) {
+    try {
+      await obs.call(`${start ? 'Start' : 'Stop'}Stream`);
+    } catch (e) {
+      console.log('broadcast error', e);
+    }
+  } else console.log('obs not connected');
+
+  res.set('Content-Type', 'application/json');
+  res.end(JSON.stringify({ success: true }));
 });
 
 const poster = { names: [], staged: [] };
