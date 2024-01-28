@@ -65,15 +65,26 @@ app.options((req, res, next) => {
   res.send(200);
 });
 
+const sendJson = ({ res, body }) => {
+  res.set('Content-Type', 'application/json');
+  res.end(JSON.stringify(body));
+};
+
+const authorized = ({ req, res }) => {
+  if (req.body?.password !== webPassword) {
+    sendJson({ res, body: { unauthorized: true }});
+    return false;
+  } else return true;
+};
+
 app.post('/login', async (req, res) => {
-  console.log('body', req.body);
-  if (req.body?.password !== webPassword)
+  if (!authorized({ req, res }))
     return;
-  res.send({ success: true });
+  sendJson({ res, body: { success: true }});
 });
 
 app.post('/snap', async (req, res) => {
-  if (req.body?.password !== webPassword)
+  if (!authorized({ req, res }))
     return;
   if (obsConnected) {
     try {
@@ -84,20 +95,19 @@ app.post('/snap', async (req, res) => {
     } catch (e) {
       if (!e.message.match(/Failed to render screenshot/))
         console.log('snap error', e);
-      res.set('Content-Type', 'application/json');
-      res.end(JSON.stringify({ success: false }));
+      sendJson({res, body: { success: false }});
     }
   } else console.log('obs not connected');
 });
 
 app.post('/zoom', async (req, res) => {
-  if (req.body?.password !== webPassword)
+  if (!authorized({ req, res }))
     return;
   await zoom({ ...req.body });
 });
 
 app.post('/scene', async (req, res) => {
-  if (req.body?.password !== webPassword)
+  if (!authorized({ req, res }))
     return;
   const { scene } = req.body;
   if (obsConnected) {
@@ -108,12 +118,11 @@ app.post('/scene', async (req, res) => {
     }
   } else console.log('obs not connected');
 
-  res.set('Content-Type', 'application/json');
-  res.end(JSON.stringify({ success: true }));
+  sendJson({ res, body: { success: true }});
 });
 
 app.post('/broadcast', async (req, res) => {
-  if (req.body?.password !== webPassword)
+  if (!authorized({ req, res }))
     return;
   const { start } = req.body;
   if (obsConnected) {
@@ -124,8 +133,7 @@ app.post('/broadcast', async (req, res) => {
     }
   } else console.log('obs not connected');
 
-  res.set('Content-Type', 'application/json');
-  res.end(JSON.stringify({ success: true }));
+  sendJson({ res, body: { success: true }});
 });
 
 const poster = { names: [], staged: [] };
