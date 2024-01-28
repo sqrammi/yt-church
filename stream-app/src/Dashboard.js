@@ -4,7 +4,8 @@ import './Dashboard.css';
 const { useEffect, useRef, useState } = require('react');
 const { Image, Button } = require('react-bootstrap');
 
-const base = `http://draper600ts.jeffhansen.com:3003`;
+// const base = `http://draper600ts.jeffhansen.com:3003`;
+const base = `https://alta.jeffhansen.com/api`;
 
 const headers = {
   'Content-type': 'application/json',
@@ -27,7 +28,12 @@ function Dashboard({ password, setPassword }) {
 
       if (req.headers.get('content-type') === 'image/jpeg')
         setImage(URL.createObjectURL(await req.blob()));
-      else setImage(black);
+      else {
+        const resp = await req.json();
+        if (resp.unauthorized)
+          setPassword('');
+        else setImage(black);
+      }
     } catch (e) {
       console.log('error getting image', e);
       setPassword('');

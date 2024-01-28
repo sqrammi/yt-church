@@ -6,7 +6,12 @@ import './Login.css';
 const { Label, Control } = Form;
 
 function Login({ setPassword }) {
-  const [ curPassword, setCurPassword ] = useState(''); // TODO: Remove!
+  const [ curPassword, setCurPassword ] = useState(localStorage.getItem('password') || '');
+
+  const saveAndSetPassword = password => {
+    localStorage.setItem('password', password);
+    setPassword(password);
+  };
 
   return <div className='login-card mt-5'>
     <Card style={{ width: '18rem' }}>
@@ -17,7 +22,7 @@ function Login({ setPassword }) {
           <Control value={curPassword} onChange={e => setCurPassword(e.target.value)}
             placeholder="Password" type="password"/>
         </Card.Text>
-        <Button onClick={e => setPassword(curPassword)}>Login</Button>
+        <Button onClick={e => saveAndSetPassword(curPassword)}>Login</Button>
       </Card.Body>
     </Card>
   </div>;
