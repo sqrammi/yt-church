@@ -72,7 +72,7 @@ function Dashboard({ password, setPassword }) {
 
   return <div className="dashboard mt-3">
     <div className="d-flex flex-column">
-      <Image width="320" height="240" {...imageProps}/>
+      <Image width="427" height="240" {...imageProps}/>
       <div className="d-flex mt-1 gap-1">
         <Button size="sm" onClick={() => zoom({ PresetID: 2, PresetName: 'Center' })}>Zoom In</Button>
         <Button size="sm" onClick={() => zoom({ PresetID: 0, PresetName: 'Center-Out1' })}>Zoom Out</Button>
