@@ -2,9 +2,18 @@
 
 const fs = require('fs');
 const axios = require('axios');
+const process = require('process');
 
 const { oauth2Client } = require('./api');
-const { next, nextEnd } = require('./next');
+const { nextMeeting } = require('./next');
+const { argv } = process;
+
+const title = argv[2] || 'Sacrament Meeting';
+const next = nextMeeting({
+  day: parseInt(argv[3]),
+  hour: parseInt(argv[4]),
+  minute: parseInt(argv[5]),
+});
 
 const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
 
@@ -26,9 +35,9 @@ const main = async () => {
 
   const body = {
     snippet: {
-      scheduledStartTime: next.toISOString(),
-      scheduledEndTime: nextEnd.toISOString(),
-      title: 'Draper 7th Ward Sacrament Meeting',
+      scheduledStartTime: next.next.toISOString(),
+      scheduledEndTime: next.nextEnd.toISOString(),
+      title,
       description: 'Sacrament Meeting',
     },
     status: {

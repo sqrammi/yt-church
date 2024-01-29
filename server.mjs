@@ -2,6 +2,7 @@
 
 import OBSWebSocket from 'obs-websocket-js';
 import express from 'express';
+import child_process from 'child_process';
 import cors from 'cors';
 import fs from 'fs';
 import { save } from './sheet.mjs';
@@ -128,6 +129,7 @@ app.post('/broadcast', async (req, res) => {
   if (obsConnected) {
     try {
       await obs.call(`${start ? 'Start' : 'Stop'}Stream`);
+      child_process.exec('./stop.js');
     } catch (e) {
       console.log('broadcast error', e);
     }

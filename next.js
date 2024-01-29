@@ -1,22 +1,32 @@
 #!/usr/bin/env node
 
-const desiredDay = 0; // Sunday
-const desiredHour = 11; // 11:10 AM
-const desiredMinutes = 10;
+const process = require('process');
 
-const now = new Date();
-let next = new Date();
+const nextMeeting = ({ day = 0, hour = 9, minute = 0 }) => {
+  const now = new Date();
+  let next = new Date();
 
-next = new Date(next.getTime() + ((7 - next.getDay()) % 7) * 86400 * 1000);
-next.setSeconds(0);
-next.setMilliseconds(0);
-next.setHours(desiredHour);
-next.setMinutes(desiredMinutes);
+  next = new Date(next.getTime() + ((7 + day - next.getDay()) % 7) * 86400 * 1000);
+  next.setSeconds(0);
+  next.setMilliseconds(0);
+  next.setHours(hour);
+  next.setMinutes(minute);
 
-if (next.getTime() < now.getTime())
-  next = new Date(next.getTime() + 7 * 86400 * 1000);
+  if (next.getTime() < now.getTime())
+    next = new Date(next.getTime() + 7 * 86400 * 1000);
 
-const nextEnd = new Date(next.getTime() + 3600 * 1000);
+  const nextEnd = new Date(next.getTime() + 3600 * 1000);
 
-exports.next = next;
-exports.nextEnd = nextEnd;
+  return { next, nextEnd };
+};
+
+exports.nextMeeting = nextMeeting;
+
+if (require.main === module) {
+  const { argv } = process;
+  console.log('next:', nextMeeting({
+    day: parseInt(argv[2]),
+    hour: parseInt(argv[3]),
+    minute: parseInt(argv[4]),
+  }));
+}
