@@ -31,7 +31,12 @@ const main = async () => {
     `broadcastStatus=testing&id=${id}`, '',
     { headers });
 
-  console.log('resp', resp.data);
+  if (resp.data?.status?.lifeCycleStatus === 'testStarting')
+    process.exit(0);
+  else {
+    console.log(resp.data);
+    process.exit(-1);
+  }
 };
 
 main();

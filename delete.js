@@ -26,11 +26,20 @@ const main = async () => {
     'Content-Type': `application/json`,
   };
 
-  const resp = await axios.delete(
-    `https://youtube.googleapis.com/youtube/v3/liveBroadcasts?` +
-    `id=${id}`, { headers });
+  const resp = await axios.get(
+    `https://youtube.googleapis.com/youtube/v3/liveBroadcasts?mine=true&maxResults=50`,
+    { headers });
 
-  console.log('OK', resp.data);
+  for (const item of resp.data?.items || []) {
+    if (!(item?.snippet?.title || '').endsWith('Sacrament Meeting'))
+      continue;
+
+//    console.log('delete id', item?.id);
+
+    const resp = await axios.delete(
+      `https://youtube.googleapis.com/youtube/v3/liveBroadcasts?` +
+      `id=${item.id}`, { headers });
+  }
 };
 
 main();

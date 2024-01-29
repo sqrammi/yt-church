@@ -31,7 +31,12 @@ const main = async () => {
     `broadcastStatus=live&id=${id}`, '',
     { headers });
 
-  console.log('resp', resp.data);
+  if (resp.data?.status?.lifeCycleStatus === 'liveStarting')
+    process.exit(0);
+  else {
+    console.error(resp.data);
+    process.exit(-1);
+  }
 };
 
 main();

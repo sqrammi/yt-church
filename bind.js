@@ -31,7 +31,7 @@ const main = async () => {
 
   if (!active.length) {
     console.error('no active streams');
-    return;
+    process.exit(-1);
   }
 
   const stream = active[0];
@@ -40,7 +40,12 @@ const main = async () => {
     `id=${id}&streamId=${stream.id}`, '',
     { headers });
 
-  console.log(resp.data);
+  if (resp.data?.status?.lifeCycleStatus === 'ready')
+    process.exit(0);
+  else {
+    console.error(resp.data);
+    process.exit(-1);
+  }
 };
 
 main();
