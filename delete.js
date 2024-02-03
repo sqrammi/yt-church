@@ -7,7 +7,6 @@ const { oauth2Client } = require('./api');
 const { next, nextEnd } = require('./next');
 
 const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
-const id = String(fs.readFileSync('./id.txt')).trim();
 
 oauth2Client.setCredentials({
   refresh_token: String(fs.readFileSync('./refresh-token.txt')).trim(),

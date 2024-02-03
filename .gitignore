@@ -5,7 +5,7 @@
 # From Google Cloud Console Service Account
 /credentials.json
 # Youtube video ID
-/id.txt
+/orgs
 # For server
 /node_modules
 # From auth-code.js after getting code from auth-app

@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 
+const process = require('process');
 const fs = require('fs');
 const axios = require('axios');
 
+const { argv } = process;
+const org = argv[2];
+const orgDir = `./orgs/${org}`;
 const { oauth2Client } = require('./api');
 const { next, nextEnd } = require('./next');
 
 const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
-const id = String(fs.readFileSync('./id.txt')).trim();
+const id = String(fs.readFileSync(`${orgDir}/id.txt`)).trim();
 
 oauth2Client.setCredentials({
   refresh_token: String(fs.readFileSync('./refresh-token.txt')).trim(),

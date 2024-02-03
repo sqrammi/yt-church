@@ -8,12 +8,16 @@ const { oauth2Client } = require('./api');
 const { nextMeeting } = require('./next');
 const { argv } = process;
 
-const title = argv[2] || 'Sacrament Meeting';
+const org = argv[2];
+const title = argv[3] || 'Sacrament Meeting';
 const next = nextMeeting({
-  day: parseInt(argv[3]),
-  hour: parseInt(argv[4]),
-  minute: parseInt(argv[5]),
+  day: parseInt(argv[4]),
+  hour: parseInt(argv[5]),
+  minute: parseInt(argv[6]),
 });
+
+const orgDir = `./orgs/${org}`;
+try { fs.mkdirSync(`${orgDir}`); } catch (e) {}
 
 const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
 
@@ -59,7 +63,7 @@ const main = async () => {
     `part=snippet%2CcontentDetails%2Cstatus`,
     body, { headers });
 
-  fs.writeFileSync('./id.txt', `${resp.data.id}\n`);
+  fs.writeFileSync(`${orgDir}/id.txt`, `${resp.data.id}\n`);
 };
 
 main();

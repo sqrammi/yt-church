@@ -129,7 +129,10 @@ app.post('/broadcast', async (req, res) => {
   if (obsConnected) {
     try {
       await obs.call(`${start ? 'Start' : 'Stop'}Stream`);
-      child_process.exec('./stop.js');
+      if (!start) {
+        const org = String(fs.readFileSync(`orgs/current`)).trim();
+        child_process.exec(`./stop.js ${org}`);
+      }
     } catch (e) {
       console.log('broadcast error', e);
     }
@@ -157,14 +160,16 @@ const posterSave = async () => {
 };
 
 app.post('/sacrament', async (req, res) => {
-  const code = String(fs.readFileSync('code.txt')).trim();
-  const id = String(fs.readFileSync('id.txt')).trim();
+  const { pass, name, email, org } = req.body;
+  const orgDir = `./orgs/${parseInt(org)}`;
+  const code = String(fs.readFileSync(`${orgDir}/code.txt`)).trim();
+  const id = String(fs.readFileSync(`${orgDir}/id.txt`)).trim();
   const ret = { success: false };
 
-  if (code === req.body.pass) {
+  if (code === pass) {
     ret.success = true;
     ret.url = `https://youtube.com/live/${id}`;
-    poster.names.push({ name: req.body.name, email: req.body.email });
+    poster.names.push({ name, email, org });
     posterSave();
   }
 

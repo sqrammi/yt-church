@@ -36,59 +36,76 @@ const _save = async entries => {
   const doc = new GoogleSpreadsheet(gsheet, serviceAccountAuth);
 
   await doc.loadInfo(); // loads document properties and worksheets
-  console.log(doc.title);
 
-  const sheet = doc.sheetsByIndex[0];
+  const dateRow = 0;
+  const totalRow = 1;
+  const nameRow = 2;
+  const firstDateCol = 1;
+  const lastDateCol = 450;
 
   const maxNames = 100;
-  await sheet.loadCells(`A1:QH${maxNames}`);
-  let i;
-  const today = sheetToday();
-  for (i = 1; i < 450; i++) {
-    const { value } = sheet.getCell(0, i);
-    if (!value || value === today)
-      break;
-  }
+  const loadedSheets = {};
 
-  let cell = sheet.getCell(0, i);
-  if (!cell.value) {
-    cell.numberFormat = { type: 'DATE', pattern: 'm/d/yyyy' };
-    cell.value = sheetToday();
-  }
+  const loadSheet = async org => {
+    let loadedSheet = loadedSheets[org];
+    if (loadedSheet)
+      return loadedSheet;
 
-  const nameBase = 2;
-  let total = 0;
-  let j;
+    let sheet = doc.sheetsByTitle[`${org}`];
+    loadedSheet = loadedSheets[org] = { sheet };
+
+    await sheet.loadCells(`A1:QH${maxNames}`);
+
+    // Find today, or a blank
+    let col;
+    const today = sheetToday();
+    for (col = firstDateCol; col < lastDateCol; col++) {
+      const { value } = sheet.getCell(dateRow, col);
+      if (!value || value === today)
+        break;
+    }
+
+    // Add today, if necessary
+    const cell = sheet.getCell(dateRow, col);
+    if (!cell.value) {
+      cell.numberFormat = { type: 'DATE', pattern: 'm/d/yyyy' };
+      cell.value = sheetToday();
+    }
+    loadedSheet.col = col;
+    return loadedSheet;
+  };
 
   const getCombined = entry => `${entry.name} <${entry.email}>`;
 
-  for (j = 0; j < maxNames; j++) {
-    for (const entry of entries) {
-      const combined = getCombined(entry);
-      cell = sheet.getCell(nameBase + j, i);
+  for (const entry of entries) {
+    const loadedSheet = await loadSheet(entry.org);
+    const { sheet } = loadedSheet;
+    console.log('loaded', sheet.title);
 
-      if (cell.value === combined) {
-        entry.exists = true;
+    for (let row = 0; row < maxNames; row++) {
+      const combined = getCombined(entry);
+      const cell = sheet.getCell(nameRow + row, loadedSheet.col);
+
+      if (cell.value === combined)
+        break;
+
+      if (!cell.value) {
+        cell.value = combined;
+        loadedSheet.total = row + 1;
         break;
       }
     }
-
-    if (!cell.value)
-      break;
   }
 
-  for (const entry of entries) {
-    cell = sheet.getCell(nameBase + j, i);
-    if (!entry.exists) {
-      cell.value = getCombined(entry);
-      j++;
+  // Sync totals and values
+  for (const loadedSheet of Object.values(loadedSheets)) {
+    const { sheet, total, col } = loadedSheet;
+    if (total) {
+      const cell = sheet.getCell(totalRow, col);
+      cell.value = total;
+      await loadedSheet.sheet.saveUpdatedCells();
     }
   }
-
-  cell = sheet.getCell(nameBase - 1, i);
-  cell.value = j;
-
-  await sheet.saveUpdatedCells();
 };
 
 // Sometimes we get Internal server errors, so retry
@@ -106,5 +123,4 @@ const save = async entries => {
     throw exc;
 }
 
-//save([ { name: 'Jeff Hansen', email: 'x@jeffhansen.com' }, { name: 'Jeff2', email: 'x@jeff.com' } ]);
 export { save };
