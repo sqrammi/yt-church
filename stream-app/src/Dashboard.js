@@ -2,9 +2,9 @@ import black from './SMPTE_Color_Bars.svg';
 import './Dashboard.css';
 
 const { useEffect, useRef, useState } = require('react');
-const { Image, Button } = require('react-bootstrap');
+const { Image, Button, Modal } = require('react-bootstrap');
+const { Header, Title, Body, Footer } = Modal;
 
-// const base = `http://draper600ts.jeffhansen.com:3003`;
 const base = `https://alta.jeffhansen.com/api`;
 
 const headers = {
@@ -13,6 +13,7 @@ const headers = {
 
 function Dashboard({ password, setPassword }) {
   const [ image, setImage ] = useState('');
+  const [ confirming, setConfirming ] = useState();
 
   const loading = useRef({});
 
@@ -70,23 +71,38 @@ function Dashboard({ password, setPassword }) {
     await req.json();
   };
 
+  const doConfirm = () => {
+    broadcast({ start: confirming });
+    setConfirming();
+  }
+
   return <div className="dashboard mt-3">
     <div className="d-flex flex-column">
-      <Image width="427" height="240" {...imageProps}/>
-      <div className="d-flex mt-1 gap-1">
+      <Image width="320" height="180" {...imageProps}/>
+      <div className="d-flex mt-3 gap-1">
         <Button size="sm" onClick={() => zoom({ PresetID: 2, PresetName: 'Center' })}>Zoom In</Button>
         <Button size="sm" onClick={() => zoom({ PresetID: 0, PresetName: 'Center-Out1' })}>Zoom Out</Button>
       </div>
-      <div className="d-flex mt-1 gap-1">
+      <div className="d-flex mt-3 gap-1">
         <Button size="sm" onClick={() => scene({ scene: 'Chapel' })}>Chapel</Button>
         <Button size="sm" onClick={() => scene({ scene: 'Sacrament' })}>Sacrament</Button>
         <Button size="sm" onClick={() => scene({ scene: 'Blank' })}>Blank</Button>
       </div>
       <div className="d-flex mt-5 gap-1">
-        <Button size="sm" onClick={() => broadcast({ start: false })}>Stop</Button>
-        <Button size="sm" onClick={() => broadcast({ start: true })}>Start</Button>
+        <Button size="sm" onClick={() => setConfirming(false)}>Stop</Button>
+        <Button size="sm" onClick={() => setConfirming(true)}>Start</Button>
       </div>
     </div>
+    <Modal show={confirming !== undefined} onHide={() => setConfirming()}>
+      <Header closeButton>
+        <Title>Confirm {confirming ? 'Start' : 'Stop'}</Title>
+      </Header>
+      <Body>Are you sure?</Body>
+      <Footer>
+        <Button variant="secondary" onClick={() => setConfirming()}>No</Button>
+        <Button variant="primary" onClick={doConfirm}>Yes</Button>
+      </Footer>
+    </Modal>
   </div>;
 }
 
