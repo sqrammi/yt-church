@@ -137,7 +137,7 @@ app.post('/broadcast', async (req, res) => {
       await obs.call(`${start ? 'Start' : 'Stop'}Stream`);
       if (!start) {
         const org = String(fs.readFileSync(`orgs/current`)).trim();
-        child_process.exec(`./stop.js ${org}`);
+        child_process.exec(`./stop.mjs`);
       }
     } catch (e) {
       console.log('broadcast error', e);
