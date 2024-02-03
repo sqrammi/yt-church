@@ -1,7 +1,8 @@
 import black from './SMPTE_Color_Bars.svg';
+import Recording from './recording.svg';
 import './Dashboard.css';
 
-const { useEffect, useRef, useState } = require('react');
+const { useCallback, useEffect, useRef, useState } = require('react');
 const { Image, Button, Modal } = require('react-bootstrap');
 const { Header, Title, Body, Footer } = Modal;
 
@@ -14,14 +15,16 @@ const headers = {
 function Dashboard({ password, setPassword }) {
   const [ image, setImage ] = useState('');
   const [ confirming, setConfirming ] = useState();
+  const [ streaming, setStreaming ] = useState();
 
-  const loading = useRef({});
+  const loadingImage = useRef({});
+  const loadingState = useRef({});
 
-  const loadImage = async () => {
-    if (loading.current.loading)
+  const loadImage = useCallback(async () => {
+    if (loadingImage.current.loading)
       return;
 
-    loading.current.loading = true;
+    loadingImage.current.loading = true;
     try {
       const req = await fetch(`${base}/snap`, {
         method: 'POST', headers, body: JSON.stringify({ password }),
@@ -39,13 +42,35 @@ function Dashboard({ password, setPassword }) {
       console.log('error getting image', e);
       setPassword('');
     }
-    delete loading.current.loading;
-  };
+    delete loadingImage.current.loading;
+  }, [ password, setPassword ]);
+
+  const loadState = useCallback(async () => {
+    if (loadingState.current.loading)
+      return;
+
+    loadingState.current.loading = true;
+    try {
+      const req = await fetch(`${base}/state`, {
+        method: 'POST', headers, body: JSON.stringify({ password }),
+      });
+
+      const resp = await req.json();
+      setStreaming(!!resp?.streaming);
+    } catch (e) {
+      console.log('error getting state', e);
+    }
+    delete loadingState.current.loading;
+  }, [ password, setStreaming ]);
 
   useEffect(() => {
-    const interval = setInterval(loadImage, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    const intervalImage = setInterval(loadImage, 1000);
+    const intervalState = setInterval(loadState, 1000);
+    return () => {
+      clearInterval(intervalImage);
+      clearInterval(intervalState);
+    }
+  }, [ loadImage, loadState ]);
 
   const imageProps = {};
   imageProps.src = image || black;
@@ -91,6 +116,7 @@ function Dashboard({ password, setPassword }) {
       <div className="d-flex mt-5 gap-1">
         <Button size="sm" onClick={() => setConfirming(false)}>Stop</Button>
         <Button size="sm" onClick={() => setConfirming(true)}>Start</Button>
+        { streaming && <Image width="30" height="30" src={Recording}/> }
       </div>
     </div>
     <Modal show={confirming !== undefined} onHide={() => setConfirming()}>
