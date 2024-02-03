@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import OBSWebSocket from 'obs-websocket-js';
+import OBSWebSocket, { EventSubscription } from 'obs-websocket-js';
 import express from 'express';
 import child_process from 'child_process';
 import cors from 'cors';
@@ -15,6 +15,7 @@ const app = express();
 const { obsPassword, webPassword } = require('./config.json');
 const port = 3003;
 let obs = new OBSWebSocket();
+let streaming = false;
 let obsConnected = false;
 
 // API: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md
@@ -29,7 +30,12 @@ const getCurrentScene = async () => {
 //  await obs.call('StopStream');
 
 const obsConnect = async () => {
-  await obs.connect('ws://127.0.0.1:3002', obsPassword);
+  await obs.connect('ws://127.0.0.1:3002', obsPassword, {
+    eventSubscriptions: EventSubscription.All,
+  });
+  obs.on('StreamStateChanged', val => {
+    streaming = val?.outputActive;
+  });
   obsConnected = true;
 };
 
@@ -53,7 +59,7 @@ app.get('*', cors(corsOptionsDelegate));
 app.use(express.json());
 
 app.use((req, res, next) => {
-  if (req.method !== 'OPTIONS' && !req.url.match(/^\/(snap|zoom|scene|broadcast)/))
+  if (req.method !== 'OPTIONS' && !req.url.match(/^\/(snap|zoom|scene|broadcast|sacrament|state)/))
     console.log(req.method, req.url);
   // TODO: Lock down
   res.set('Access-Control-Allow-Headers', 'Content-Type, Origin, Accept');
@@ -158,6 +164,12 @@ const posterSave = async () => {
     }, 3000);
   }
 };
+
+app.post('/state', async (req, res) => {
+  if (!authorized({ req, res }))
+    return;
+  res.send({ success: true, streaming });
+});
 
 app.post('/sacrament', async (req, res) => {
   const { pass, name, email, org } = req.body;
