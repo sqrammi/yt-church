@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './App.css';
-
-import { Image } from 'react-bootstrap';
 
 import Login from './Login';
 import Dashboard from './Dashboard';
