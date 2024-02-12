@@ -33,8 +33,8 @@ const stopObs = async () => {
   try {
     await obs.call('StopStream');
   } catch (e) {
-    // 501 at least means that it's already stopped
-    if (e.code !== 501)
+    // 500/501 at least means that it's already stopped
+    if (e.code !== 500 && e.code !== 501)
       throw e;
   }
   await obs.disconnect();

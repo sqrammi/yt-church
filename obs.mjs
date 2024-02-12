@@ -21,7 +21,16 @@ const params = argv.slice(3).reduce((a, v) => {
 
 const obsConnect = async () => {
   await obs.connect('ws://127.0.0.1:3002', obsPassword);
-  await obs.call(argv[2], params);
+  try {
+    await obs.call(argv[2], params);
+  } catch (e) {
+    if (argv[2] === 'StartStream' && e.code === 500 ||
+        argv[2] === 'StopStream' && (e.code === 500 || e.code === 501)) {
+      // Already in desired state
+    } else {
+      throw e;
+    }
+  }
   await obs.disconnect();
 };
 
