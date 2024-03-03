@@ -11,10 +11,16 @@ sleep 2
 ./obs.mjs StartStream
 sleep 20
 
-./bind.js "$1"
+retry() {
+  local TO=5
+  while ! "$@" && [ "$TO" -gt 0 ]; do TO=$((TO-1)); sleep 5; done
+  if [ "$TO" = 0 ]; then exit 1; fi
+}
+
+retry ./bind.js "$1"
 sleep 20
 
-./testing.js "$1"
-sleep 20
+retry ./testing.js "$1"
+sleep 25
 
-./live.js "$1"
+retry ./live.js "$1"
