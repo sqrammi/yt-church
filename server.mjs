@@ -174,11 +174,14 @@ app.post('/state', async (req, res) => {
 app.post('/sacrament', async (req, res) => {
   const { pass, name, email, org } = req.body;
   const orgDir = `./orgs/${parseInt(org)}`;
-  const code = String(fs.readFileSync(`${orgDir}/code.txt`)).trim();
+  let code;
+  try {
+    code = String(fs.readFileSync(`${orgDir}/code.txt`)).trim();
+  } catch (e) {}
   const id = String(fs.readFileSync(`${orgDir}/id.txt`)).trim();
   const ret = { success: false };
 
-  if (code === pass) {
+  if (!code || code === pass) {
     ret.success = true;
     ret.url = `https://youtube.com/live/${id}`;
     poster.names.push({ name, email, org });
