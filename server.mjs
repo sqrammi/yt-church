@@ -21,7 +21,11 @@ let obsConnected = false;
 // API: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md
 
 const getCurrentScene = async () => {
-  return (await obs.call('GetCurrentProgramScene')).currentProgramSceneName;
+  try {
+    return (await obs.call('GetCurrentProgramScene')).currentProgramSceneName;
+  } catch (e) {
+    return 'unknown';
+  }
 };
 
 //    await obs.call('SetCurrentProgramScene', { sceneName: 'Sacrament' });
@@ -168,7 +172,8 @@ const posterSave = async () => {
 app.post('/state', async (req, res) => {
   if (!authorized({ req, res }))
     return;
-  res.send({ success: true, streaming });
+  const scene = await getCurrentScene();
+  res.send({ success: true, streaming, scene });
 });
 
 app.post('/sacrament', async (req, res) => {
