@@ -12,9 +12,15 @@ const headers = {
   'Content-type': 'application/json',
 };
 
+function SceneButton({ scene, setScene, currentScene }) {
+  return <Button size="sm" variant={scene === currentScene ? 'primary' : 'secondary'}
+    onClick={() => setScene({ scene })}>{scene}</Button>
+}
+
 function Dashboard({ password, setPassword }) {
   const [ image, setImage ] = useState('');
   const [ confirming, setConfirming ] = useState();
+  const [ currentScene, setCurrentScene ] = useState('unknown');
   const [ streaming, setStreaming ] = useState();
 
   const loadingImage = useRef({});
@@ -57,6 +63,7 @@ function Dashboard({ password, setPassword }) {
 
       const resp = await req.json();
       setStreaming(!!resp?.streaming);
+      setCurrentScene(resp?.scene || 'unknown');
     } catch (e) {
       console.log('error getting state', e);
     }
@@ -101,6 +108,11 @@ function Dashboard({ password, setPassword }) {
     setConfirming();
   }
 
+  const sceneButtons = {
+    setScene: scene,
+    currentScene,
+  };
+
   return <div className="dashboard mt-3">
     <div className="d-flex flex-column">
       <Image width="320" height="180" {...imageProps}/>
@@ -109,13 +121,13 @@ function Dashboard({ password, setPassword }) {
         <Button size="sm" onClick={() => zoom({ PresetID: 0, PresetName: 'Center-Out1' })}>Zoom Out</Button>
       </div>
       <div className="d-flex mt-3 gap-1">
-        <Button size="sm" onClick={() => scene({ scene: 'Chapel' })}>Chapel</Button>
-        <Button size="sm" onClick={() => scene({ scene: 'Sacrament' })}>Sacrament</Button>
-        <Button size="sm" onClick={() => scene({ scene: 'Blank' })}>Blank</Button>
+        <SceneButton scene='Chapel' {...sceneButtons}/>
+        <SceneButton scene='Sacrament' {...sceneButtons}/>
+        <SceneButton scene='Blank' {...sceneButtons}/>
       </div>
       <div className="d-flex mt-5 gap-1">
-        <Button size="sm" onClick={() => setConfirming(false)}>Stop</Button>
-        <Button size="sm" onClick={() => setConfirming(true)}>Start</Button>
+        <Button size="sm" variant={streaming ? 'danger' : 'secondary'} onClick={() => setConfirming(false)}>Stop</Button>
+        <Button size="sm" variant={streaming ? 'secondary' : 'success'}  onClick={() => setConfirming(true)}>Start</Button>
         { streaming && <Image width="30" height="30" src={Recording}/> }
       </div>
     </div>
