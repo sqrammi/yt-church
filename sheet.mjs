@@ -43,7 +43,7 @@ const _save = async entries => {
   const firstDateCol = 1;
   const lastDateCol = 450;
 
-  const maxNames = 100;
+  const maxNames = 1000;
   const loadedSheets = {};
 
   const loadSheet = async org => {
@@ -72,6 +72,17 @@ const _save = async entries => {
       cell.value = sheetToday();
     }
     loadedSheet.col = col;
+
+    for (let row = 0; row < maxNames; row++) {
+      const cell = sheet.getCell(nameRow + row, loadedSheet.col);
+
+      if (!cell.value) {
+        loadedSheet.max = row;
+        loadedSheet.next = row;
+        break;
+      }
+    }
+
     return loadedSheet;
   };
 
@@ -80,20 +91,24 @@ const _save = async entries => {
   for (const entry of entries) {
     const loadedSheet = await loadSheet(entry.org);
     const { sheet } = loadedSheet;
+    const combined = getCombined(entry);
+    let found = false;
     console.log('loaded', sheet.title);
 
-    for (let row = 0; row < maxNames; row++) {
-      const combined = getCombined(entry);
+    for (let row = 0; row < loadedSheet.max; row++) {
       const cell = sheet.getCell(nameRow + row, loadedSheet.col);
 
-      if (cell.value === combined)
-        break;
-
-      if (!cell.value) {
-        cell.value = combined;
-        loadedSheet.total = row + 1;
+      if (cell.value === combined) {
+        found = true;
         break;
       }
+    }
+
+    if (!found) {
+      const cell = sheet.getCell(nameRow + loadedSheet.next, loadedSheet.col);
+      cell.value = combined;
+      loadedSheet.total = loadedSheet.next + 1;
+      loadedSheet.next++;
     }
   }
 
