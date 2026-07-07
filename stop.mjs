@@ -41,7 +41,8 @@ const stopObs = async () => {
 };
 
 const main = async () => {
-  await stopObs();
+  if (process.argv[2] !== '-C')
+    await stopObs();
 
   const accessToken = await login();
 

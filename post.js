@@ -54,7 +54,7 @@ const main = async () => {
       },
       enableDvr: true,
       closedCaptionsType: 'closedCaptionsEmbedded',
-      enableLowLatency: true,
+//      enableLowLatency: true,
 //      latencyPreference: 'ultraLow', // doesn't allow closed captions
     },
   };

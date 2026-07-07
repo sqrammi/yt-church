@@ -34,6 +34,7 @@ const main = async () => {
       continue;
 
 //    console.log('delete id', item?.id);
+//    console.log('delete', item?.snippet?.title);
 
     const resp = await axios.delete(
       `https://youtube.googleapis.com/youtube/v3/liveBroadcasts?` +

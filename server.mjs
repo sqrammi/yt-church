@@ -20,6 +20,7 @@ let obsConnected = false;
 
 // API: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md
 
+console.log('Always run this in a loop!');
 const getCurrentScene = async () => {
   try {
     return (await obs.call('GetCurrentProgramScene')).currentProgramSceneName;
@@ -100,7 +101,7 @@ app.post('/snap', async (req, res) => {
   if (obsConnected) {
     try {
       const data = (await obs.call('GetSourceScreenshot', {
-        sourceName: 'RTSP', imageHeight: 240, imageFormat: "jpeg" })).imageData;
+        sourceName: 'GS-RTSP', imageHeight: 240, imageFormat: "jpeg" })).imageData;
       res.set('Content-Type', 'image/jpeg');
       res.end(Buffer.from(atob(data.split('base64,')[1]), 'binary'));
     } catch (e) {
@@ -148,6 +149,11 @@ app.post('/broadcast', async (req, res) => {
     }
   } else console.log('obs not connected');
 
+  sendJson({ res, body: { success: true }});
+});
+
+app.post('/test', async (req, res) => {
+  console.log('body', req.body);
   sendJson({ res, body: { success: true }});
 });
 
