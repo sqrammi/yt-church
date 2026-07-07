@@ -8,13 +8,28 @@ const { oauth2Client } = require('./api');
 const { nextMeeting } = require('./next');
 const { argv } = process;
 
-const org = argv[2];
-const title = argv[3] || 'Sacrament Meeting';
+const args = argv.slice(2);
+let weeks = 0;
+let argOffset = 0;
+
+if (args[0] === '-w') {
+  weeks = Number.parseInt(args[1], 10) || 0;
+  argOffset = 2;
+}
+
+const org = args[argOffset];
+const title = args[argOffset + 1] || 'Sacrament Meeting';
 const next = nextMeeting({
-  day: parseInt(argv[4]),
-  hour: parseInt(argv[5]),
-  minute: parseInt(argv[6]),
+  day: Number.parseInt(args[argOffset + 2], 10),
+  hour: Number.parseInt(args[argOffset + 3], 10),
+  minute: Number.parseInt(args[argOffset + 4], 10),
 });
+const weekOffsetMs = weeks * 7 * 86400 * 1000;
+
+if (weekOffsetMs) {
+  next.next = new Date(next.next.getTime() + weekOffsetMs);
+  next.nextEnd = new Date(next.nextEnd.getTime() + weekOffsetMs);
+}
 
 const orgDir = `./orgs/${org}`;
 try { fs.mkdirSync(`${orgDir}`); } catch (e) {}
