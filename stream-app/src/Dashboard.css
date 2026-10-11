@@ -3,3 +3,80 @@
   justify-content: center;
   /* width: 320px; */
 }
+
+.broadcast-camera-controls {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 320px;
+}
+
+.broadcast-buttons {
+  align-items: center;
+}
+
+.ptz-controls {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.ptz-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(3, 28px);
+  gap: 2px;
+}
+
+.ptz-button.btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+.ptz-up { grid-area: 1 / 2; }
+.ptz-left { grid-area: 2 / 1; }
+.ptz-right { grid-area: 2 / 3; }
+.ptz-down { grid-area: 3 / 2; }
+.ptz-center {
+  grid-area: 2 / 2;
+  align-self: center;
+  justify-self: center;
+  color: #6c757d;
+}
+
+.ptz-zoom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ptz-zoom-label, .ptz-hint { font-size: 11px; }
+.ptz-hint {
+  grid-column: 1 / -1;
+  color: #6c757d;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ptz-error {
+  grid-column: 1 / -1;
+  max-width: 140px;
+  color: #b02a37;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.preset-error {
+  max-width: 320px;
+  margin-top: 4px;
+  color: #b02a37;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}

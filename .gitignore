@@ -17,3 +17,6 @@
 /auth-app/src/creds.json
 # From config.json.in
 /config.json
+
+*.test.js
+*.test.mjs

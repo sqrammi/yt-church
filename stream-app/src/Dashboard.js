@@ -1,5 +1,6 @@
 import black from './SMPTE_Color_Bars.svg';
 import Recording from './recording.svg';
+import PtzControls from './PtzControls';
 import './Dashboard.css';
 
 const { useCallback, useEffect, useRef, useState } = require('react');
@@ -22,6 +23,9 @@ function Dashboard({ password, setPassword }) {
   const [ confirming, setConfirming ] = useState();
   const [ currentScene, setCurrentScene ] = useState('unknown');
   const [ streaming, setStreaming ] = useState();
+  const [ recallingPreset, setRecallingPreset ] = useState(false);
+  const [ presetError, setPresetError ] = useState('');
+  const presetInFlight = useRef(false);
 
   const loadingImage = useRef({});
   const loadingState = useRef({});
@@ -82,11 +86,30 @@ function Dashboard({ password, setPassword }) {
   const imageProps = {};
   imageProps.src = image || black;
 
-  const zoom = async (opts) => {
-    const req = await fetch(`${base}/zoom`, {
-      method: 'POST', headers, body: JSON.stringify({ password, ...opts }),
-    });
-    await req.json();
+  const recallPreset = async (preset) => {
+    if (presetInFlight.current) return;
+    presetInFlight.current = true;
+    setRecallingPreset(true);
+    setPresetError('');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 35000);
+    try {
+      const req = await fetch(`${base}/ptz`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ password, action: 'preset', preset }),
+        signal: controller.signal,
+      });
+      const result = await req.json();
+      if (result.unauthorized) return setPassword('');
+      if (!req.ok || !result.success)
+        throw new Error(result.error || 'Could not recall camera preset');
+    } catch (error) {
+      setPresetError(error.name === 'AbortError' ? 'Preset request timed out. Check the camera.' : error.message);
+    } finally {
+      clearTimeout(timeout);
+      presetInFlight.current = false;
+      setRecallingPreset(false);
+    }
   };
 
   const scene = async (opts) => {
@@ -117,18 +140,22 @@ function Dashboard({ password, setPassword }) {
     <div className="d-flex flex-column">
       <Image width="320" height="180" {...imageProps}/>
       <div className="d-flex mt-3 gap-1">
-        <Button size="sm" onClick={() => zoom({ PresetID: 2, PresetName: 'Center' })}>Zoom In</Button>
-        <Button size="sm" onClick={() => zoom({ PresetID: 0, PresetName: 'Center-Out1' })}>Zoom Out</Button>
+        <Button size="sm" disabled={recallingPreset} title="Recall camera preset 1" onClick={() => recallPreset(1)}>Zoom In</Button>
+        <Button size="sm" disabled={recallingPreset} title="Recall camera preset 2" onClick={() => recallPreset(2)}>Zoom Out</Button>
       </div>
+      {presetError && <div className="preset-error" role="alert">{presetError}</div>}
       <div className="d-flex mt-3 gap-1">
         <SceneButton scene='Chapel' {...sceneButtons}/>
         <SceneButton scene='Sacrament' {...sceneButtons}/>
         <SceneButton scene='Blank' {...sceneButtons}/>
       </div>
-      <div className="d-flex mt-5 gap-1">
+      <div className="broadcast-camera-controls mt-5">
+        <div className="broadcast-buttons d-flex gap-1">
         <Button size="sm" variant={streaming ? 'danger' : 'secondary'} onClick={() => setConfirming(false)}>Stop</Button>
         <Button size="sm" variant={streaming ? 'secondary' : 'success'}  onClick={() => setConfirming(true)}>Start</Button>
         { streaming && <Image width="30" height="30" src={Recording}/> }
+        </div>
+        <PtzControls base={base} password={password} onUnauthorized={() => setPassword('')}/>
       </div>
     </div>
     <Modal show={confirming !== undefined} onHide={() => setConfirming()}>

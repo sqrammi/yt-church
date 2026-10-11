@@ -7,12 +7,14 @@ import cors from 'cors';
 import fs from 'fs';
 import { save } from './sheet.mjs';
 import { zoom } from './zoom.mjs';
+import { createPtzController } from './ptz.mjs';
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const app = express();
-const { obsPassword, obsCamScene, webPassword } = require('./config.json');
+const { obsPassword, obsCamScene, webPassword, ptz: ptzConfig } = require('./config.json');
+const ptz = createPtzController(ptzConfig);
 const port = 3003;
 let obs = new OBSWebSocket();
 let streaming = false;
@@ -116,6 +118,17 @@ app.post('/zoom', async (req, res) => {
   if (!authorized({ req, res }))
     return;
   await zoom({ ...req.body });
+});
+
+app.post('/ptz', async (req, res) => {
+  if (!authorized({ req, res })) return;
+  try {
+    if (req.body.action === 'preset') await ptz.recallPreset(req.body.preset);
+    else await ptz.nudge(req.body.action);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(error.status || 502).json({ success: false, error: error.message });
+  }
 });
 
 app.post('/scene', async (req, res) => {

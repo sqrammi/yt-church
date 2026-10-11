@@ -2,5 +2,13 @@
   "obsPassword": "",
   "obsCamScene": "NDI",
   "webPassword": "",
-  "gsheet": ""
+  "gsheet": "",
+  "ptz": {
+    "host": "192.168.109.97",
+    "port": 5678,
+    "panSpeed": 2,
+    "tiltSpeed": 2,
+    "zoomSpeed": 0,
+    "nudgeMs": 250
+  }
 }
