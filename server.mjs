@@ -123,7 +123,14 @@ app.post('/zoom', async (req, res) => {
 app.post('/ptz', async (req, res) => {
   if (!authorized({ req, res })) return;
   try {
-    if (req.body.action === 'preset') await ptz.recallPreset(req.body.preset);
+    if (req.body.control === 'start') {
+      const holdId = await ptz.startHold(req.body.action);
+      return res.json({ success: true, holdId });
+    }
+    if (req.body.control === 'keepalive') ptz.keepHold(req.body.holdId);
+    else if (req.body.control === 'stop') await ptz.stopHold(req.body.holdId);
+    else if (req.body.control) return res.status(400).json({ success: false, error: 'Unknown PTZ control' });
+    else if (req.body.action === 'preset') await ptz.recallPreset(req.body.preset);
     else await ptz.nudge(req.body.action);
     res.json({ success: true });
   } catch (error) {

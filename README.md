@@ -35,19 +35,22 @@ Camera controls in stream-app:
   dashboard password. The browser cannot choose the target address or speed.
 - Restart server.mjs and rebuild/redeploy stream-app with its normal process.
   A web-only forward such as localhost:3333 does not forward the VISCA port.
-- The controls beside Start/Stop send one short nudge per click/tap (also usable
-  with Tab and Enter/Space). Pan/tilt default to speed 2; zoom uses its slowest
-  variable speed, 0. Duration defaults to 250 ms and is limited to 100–500 ms.
+- Hold the controls beside Start/Stop to pan, tilt, or zoom continuously;
+  release to stop. Mouse, touch, and holding Enter/Space on a focused button
+  are supported. Pan/tilt default to speed 2; zoom uses its slowest speed, 0.
   Pan speed can be 1–24, tilt 1–20, and zoom 0–7; smaller values are slower.
-- Each nudge automatically sends pan/tilt and zoom stops from the server, even
-  if the browser disconnects or the movement reply is delayed. Concurrent
-  movements are rejected, and failed stops are retried on a fresh connection.
+- Release, lost pointer capture, leaving the tab/window, and unmounting the
+  controls send stop commands. While held, the browser renews a server lease;
+  the server stops after 1.5 seconds without renewal. Delayed requests cannot
+  revive a stopped hold or stop a newer one. Concurrent movements are rejected,
+  and failed stops are retried on a fresh connection. Older clients can still
+  use the short-nudge API (configured by nudgeMs).
   A network/power loss can still prevent delivery; errors are shown in the UI.
 - Zoom In recalls camera preset 1 and Zoom Out recalls camera preset 2 over
   VISCA. Save these slots in the RL500 web UI; recalling does not overwrite
   them. These restore the saved framing (pan, tilt, and zoom), using the
   camera's preset recall speed, independently of the slow manual controls.
   The server waits up to 30 seconds for completion and rejects simultaneous
-  moves. The +/− buttons still make small zoom adjustments. NDI video and OBS
+  moves. The +/− buttons provide manual hold-to-zoom control. NDI video and OBS
   scenes are unaffected.
 - Test the TCP controller without a camera: `node --test ptz.test.mjs`.

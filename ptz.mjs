@@ -1,4 +1,5 @@
 import net from 'node:net';
+import { randomUUID } from 'node:crypto';
 
 const panStop = Buffer.from([0x81, 1, 6, 1, 1, 1, 3, 3, 0xff]);
 const zoomStop = Buffer.from([0x81, 1, 4, 7, 0, 0xff]);
@@ -83,6 +84,16 @@ export function createPtzController(config = {}) {
   const timeoutMs = 1000;
   const directions = { up: [3, 1], down: [3, 2], left: [1, 3], right: [2, 3] };
   let busy = false;
+  let heldMotion;
+  const holdTimeoutMs = 1500;
+
+  function movementBytes(action) {
+    if (typeof action === 'string' && Object.hasOwn(directions, action))
+      return Buffer.from([0x81, 1, 6, 1, panSpeed, tiltSpeed, ...directions[action], 0xff]);
+    if (action === 'zoom-in' || action === 'zoom-out')
+      return Buffer.from([0x81, 1, 4, 7, (action === 'zoom-in' ? 0x20 : 0x30) + zoomSpeed, 0xff]);
+    throw Object.assign(new Error('Unknown PTZ action'), { status: 400 });
+  }
 
   async function stop(session, zoomFirst) {
     // Attempt both axes even if one stop is rejected.
@@ -94,7 +105,74 @@ export function createPtzController(config = {}) {
     if (results.length) throw results[0];
   }
 
+  function finishHold(motion) {
+    if (motion.stopping) return motion.stopping;
+    clearTimeout(motion.timer);
+    motion.stopping = (async () => {
+      try {
+        try {
+          await stop(motion.session, motion.action.startsWith('zoom-'));
+        } catch {
+          motion.session.close();
+          motion.session = await connect(host, port, timeoutMs);
+          await stop(motion.session, motion.action.startsWith('zoom-'));
+        }
+      } catch {
+        throw new Error('Camera stop could not be confirmed; check the camera');
+      } finally {
+        motion.session?.close();
+        if (heldMotion === motion) {
+          heldMotion = undefined;
+          busy = false;
+        }
+      }
+    })();
+    return motion.stopping;
+  }
+
+  function renewHold(motion) {
+    clearTimeout(motion.timer);
+    // Renewals extend a lease; they never resend a movement command. Once a
+    // hold is stopped/expired, delayed requests cannot start it again.
+    motion.timer = setTimeout(() => {
+      finishHold(motion).catch(error => console.error('PTZ hold timeout:', error.message));
+    }, holdTimeoutMs);
+  }
+
   return {
+    async startHold(action) {
+      const bytes = movementBytes(action);
+      if (!host || typeof host !== 'string')
+        throw Object.assign(new Error('Configure ptz.host in config.json to enable camera controls'), { status: 503 });
+      if (busy) throw Object.assign(new Error('Camera is busy; try again'), { status: 409 });
+      busy = true;
+      const motion = { id: randomUUID(), action };
+      heldMotion = motion;
+      try {
+        motion.session = await connect(host, port, timeoutMs);
+        renewHold(motion);
+        await motion.session.command(bytes);
+        if (motion.stopping || heldMotion !== motion)
+          throw new Error('Camera hold expired; press again');
+        return motion.id;
+      } catch (error) {
+        if (motion.session) await finishHold(motion);
+        else if (heldMotion === motion) {
+          heldMotion = undefined;
+          busy = false;
+        }
+        throw error;
+      }
+    },
+    keepHold(id) {
+      if (!heldMotion || heldMotion.id !== id || heldMotion.stopping)
+        throw Object.assign(new Error('Camera hold expired; press again'), { status: 409 });
+      renewHold(heldMotion);
+    },
+    async stopHold(id) {
+      // Releasing an old button must not stop another operator's newer hold.
+      if (heldMotion && heldMotion.id === id) await finishHold(heldMotion);
+    },
     async recallPreset(preset) {
       if (preset !== 1 && preset !== 2)
         throw Object.assign(new Error('Preset must be 1 or 2'), { status: 400 });
@@ -115,14 +193,7 @@ export function createPtzController(config = {}) {
       }
     },
     async nudge(action) {
-      let bytes;
-      if (typeof action !== 'string')
-        throw Object.assign(new Error('Unknown PTZ action'), { status: 400 });
-      if (Object.hasOwn(directions, action))
-        bytes = Buffer.from([0x81, 1, 6, 1, panSpeed, tiltSpeed, ...directions[action], 0xff]);
-      else if (action === 'zoom-in' || action === 'zoom-out')
-        bytes = Buffer.from([0x81, 1, 4, 7, (action === 'zoom-in' ? 0x20 : 0x30) + zoomSpeed, 0xff]);
-      else throw Object.assign(new Error('Unknown PTZ action'), { status: 400 });
+      const bytes = movementBytes(action);
       if (!host || typeof host !== 'string')
         throw Object.assign(new Error('Configure ptz.host in config.json to enable camera controls'), { status: 503 });
       // Reject overlapping clients/taps; never build a queue of stale movements.
