@@ -10,5 +10,6 @@
     "tiltSpeed": 2,
     "zoomSpeed": 0,
     "nudgeMs": 250
-  }
+  },
+  "baseUrl": "s3://draperstake.org/stream/"
 }
