@@ -1,5 +1,6 @@
 {
   "obsPassword": "",
+  "obsCamScene": "NDI",
   "webPassword": "",
   "gsheet": ""
 }

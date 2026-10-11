@@ -12,7 +12,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const app = express();
-const { obsPassword, webPassword } = require('./config.json');
+const { obsPassword, obsCamScene, webPassword } = require('./config.json');
 const port = 3003;
 let obs = new OBSWebSocket();
 let streaming = false;
@@ -101,7 +101,7 @@ app.post('/snap', async (req, res) => {
   if (obsConnected) {
     try {
       const data = (await obs.call('GetSourceScreenshot', {
-        sourceName: 'GS-RTSP', imageHeight: 240, imageFormat: "jpeg" })).imageData;
+        sourceName: obsCamScene, imageHeight: 240, imageFormat: "jpeg" })).imageData;
       res.set('Content-Type', 'image/jpeg');
       res.end(Buffer.from(atob(data.split('base64,')[1]), 'binary'));
     } catch (e) {
