@@ -8,6 +8,7 @@ import fs from 'fs';
 import { save } from './sheet.mjs';
 import { zoom } from './zoom.mjs';
 import { createPtzController } from './ptz.mjs';
+import { createObsConnection } from './obs-connection.mjs';
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -16,9 +17,12 @@ const app = express();
 const { obsPassword, obsCamScene, webPassword, ptz: ptzConfig } = require('./config.json');
 const ptz = createPtzController(ptzConfig);
 const port = 3003;
-let obs = new OBSWebSocket();
-let streaming = false;
-let obsConnected = false;
+const obs = createObsConnection({
+  createClient: () => new OBSWebSocket(),
+  url: 'ws://127.0.0.1:3002',
+  password: obsPassword,
+  eventSubscriptions: EventSubscription.All,
+});
 
 // API: https://github.com/obsproject/obs-websocket/blob/master/docs/generated/protocol.md
 
@@ -35,16 +39,6 @@ const getCurrentScene = async () => {
 //    console.log('scene', await getCurrentScene());
 //  await obs.call('StartStream');
 //  await obs.call('StopStream');
-
-const obsConnect = async () => {
-  await obs.connect('ws://127.0.0.1:3002', obsPassword, {
-    eventSubscriptions: EventSubscription.All,
-  });
-  obs.on('StreamStateChanged', val => {
-    streaming = val?.outputActive;
-  });
-  obsConnected = true;
-};
 
 var allowlist = ['https://s3-us-west-2.amazonaws.com', 'https://draper7.org'];
 var corsOptionsDelegate = function (req, callback) {
@@ -84,6 +78,12 @@ const sendJson = ({ res, body }) => {
   res.end(JSON.stringify(body));
 };
 
+const obsFailure = (res, error) => res.status(error?.status || 502).json({
+  success: false,
+  connected: obs.connected,
+  error: error?.message || 'OBS is disconnected; reconnecting',
+});
+
 const authorized = ({ req, res }) => {
   if (req.body?.password !== webPassword) {
     sendJson({ res, body: { unauthorized: true }});
@@ -100,18 +100,18 @@ app.post('/login', async (req, res) => {
 app.post('/snap', async (req, res) => {
   if (!authorized({ req, res }))
     return;
-  if (obsConnected) {
+  if (obs.connected) {
     try {
       const data = (await obs.call('GetSourceScreenshot', {
         sourceName: obsCamScene, imageHeight: 240, imageFormat: "jpeg" })).imageData;
       res.set('Content-Type', 'image/jpeg');
       res.end(Buffer.from(atob(data.split('base64,')[1]), 'binary'));
     } catch (e) {
-      if (!e.message.match(/Failed to render screenshot/))
+      if (obs.connected && !e.message.match(/Failed to render screenshot/))
         console.log('snap error', e);
-      sendJson({res, body: { success: false }});
+      return obsFailure(res, e);
     }
-  } else console.log('obs not connected');
+  } else return obsFailure(res, { status: 503 });
 });
 
 app.post('/zoom', async (req, res) => {
@@ -142,13 +142,14 @@ app.post('/scene', async (req, res) => {
   if (!authorized({ req, res }))
     return;
   const { scene } = req.body;
-  if (obsConnected) {
+  if (obs.connected) {
     try {
       await obs.call('SetCurrentProgramScene', { sceneName: scene });
     } catch (e) {
       console.log('scene error', e);
+      return obsFailure(res, e);
     }
-  } else console.log('obs not connected');
+  } else return obsFailure(res, { status: 503 });
 
   sendJson({ res, body: { success: true }});
 });
@@ -157,7 +158,7 @@ app.post('/broadcast', async (req, res) => {
   if (!authorized({ req, res }))
     return;
   const { start } = req.body;
-  if (obsConnected) {
+  if (obs.connected) {
     try {
       await obs.call(`${start ? 'Start' : 'Stop'}Stream`);
       if (!start) {
@@ -166,8 +167,9 @@ app.post('/broadcast', async (req, res) => {
       }
     } catch (e) {
       console.log('broadcast error', e);
+      return obsFailure(res, e);
     }
-  } else console.log('obs not connected');
+  } else return obsFailure(res, { status: 503 });
 
   sendJson({ res, body: { success: true }});
 });
@@ -199,7 +201,7 @@ app.post('/state', async (req, res) => {
   if (!authorized({ req, res }))
     return;
   const scene = await getCurrentScene();
-  res.send({ success: true, streaming, scene });
+  res.send({ success: obs.connected, connected: obs.connected, streaming: obs.streaming, scene });
 });
 
 app.post('/sacrament', async (req, res) => {
@@ -226,4 +228,4 @@ app.listen(port, () => {
   console.log(`Running on port ${port}`)
 });
 
-obsConnect();
+obs.start();
