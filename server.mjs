@@ -117,7 +117,12 @@ app.post('/snap', async (req, res) => {
 app.post('/zoom', async (req, res) => {
   if (!authorized({ req, res }))
     return;
-  await zoom({ ...req.body });
+  try {
+    await zoom(req.body, ptz);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(error.status || 502).json({ success: false, error: error.message });
+  }
 });
 
 app.post('/ptz', async (req, res) => {

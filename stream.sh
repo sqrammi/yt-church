@@ -19,7 +19,7 @@ else
   sleep 2
   ./obs.mjs SetCurrentProgramScene sceneName=Chapel
 
-  ./zoom.mjs PresetID=2 PresetName=Center
+  ./zoom.mjs preset=1
 
   ./obs.mjs StartStream
   sleep 20

@@ -54,3 +54,15 @@ Camera controls in stream-app:
   moves. The +/− buttons provide manual hold-to-zoom control. NDI video and OBS
   scenes are unaffected.
 - Test the TCP controller without a camera: `node --test ptz.test.mjs`.
+
+Broadcast startup recalls camera preset 1 using `./zoom.mjs preset=1` before
+starting the OBS stream. `zoom.mjs` uses the same VISCA TCP controller and
+`config.json`'s `ptz.host`/`ptz.port` as the UI; camera HTTP credentials and
+named presets are no longer used. Supported slots are 1 and 2, matching the UI.
+Legacy `PresetID=1` is accepted; `PresetName` is ignored when a numeric slot is
+provided. Recall waits for camera completion (up to 30 seconds), and failure
+exits nonzero so `stream.sh` stops before starting the broadcast.
+The legacy `/zoom` endpoint shares the UI's controller and movement lock.
+The standalone CLI talks directly to the camera and does not share the server's
+in-process lock; avoid UI camera movements while startup is recalling a preset.
+Test both paths without moving a real camera: `node --test ptz.test.mjs zoom.test.mjs`.
