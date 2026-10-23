@@ -11,6 +11,7 @@
     "google-auth-library": "^9.4.1",
     "google-spreadsheet": "^4.1.1",
     "googleapis": "^129.0.0",
-    "obs-websocket-js": "^5.0.4"
+    "obs-websocket-js": "^5.0.4",
+    "selenium-webdriver": "4.51.0"
   }
 }

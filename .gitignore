@@ -20,3 +20,7 @@
 
 *.test.js
 *.test.mjs
+
+# Dedicated Firefox login profile (normally kept outside this repository)
+/yt-church-browser/
+!/youtube-captions.test.cjs

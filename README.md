@@ -24,6 +24,73 @@ Start stream
 ./testing.js
 ./live.js
 
+Automatic YouTube live captions (Firefox):
+
+- Requires Node.js 22 or newer and Firefox. After pulling these changes, run
+  `npm ci` in this repository. Selenium drives the installed Firefox; it does
+  not require a special Playwright browser or a running Selenium server.
+- In a terminal on the Ubuntu desktop/RDP session, as `draper` (without sudo),
+  run `node youtube-login.js`. It opens a separate Firefox profile. Sign in to
+  YouTube Studio, complete any Google verification, and select the channel that
+  owns the broadcasts. Use the English Studio interface. Close all windows of
+  this dedicated Firefox. The script then checks the saved login headlessly.
+- Login cookies remain in `~/yt-church-browser`, protected with directory mode
+  0700. They grant account access: do not commit or share this directory. No
+  Google password is requested by the scripts or written into the repository.
+  Keep this profile separate from your everyday Firefox profile.
+- `post.js` now creates a Normal-latency event and runs `youtube-captions.js`
+  headlessly to turn on Closed captions and select Automatic captions (English
+  only). It reloads Studio to verify captions, language, and latency persisted.
+  Successful `post.js` runs print nothing to stdout or stderr, so cron only
+  emails on failure. Running the caption helper directly still prints its result.
+  No desktop or open Firefox is required for subsequent scheduled runs. Run as
+  the same OS user with the same HOME, and `cd` to this repository as before.
+- The public YouTube API cannot select Automatic Captions. Its
+  `closedCaptionsDisabled` value is only the starting point; the Studio browser
+  step is required. The existing OAuth refresh token still creates broadcasts;
+  the separate Firefox login controls the Studio setting.
+- Missing login setup fails before creating an event. Expired login, a Google
+  verification prompt, wrong channel, unavailable options, unsaved settings, or
+  browser errors cause `post.js` to print an error and exit nonzero. If an event
+  was already created, its ID remains in `orgs/<org>/id.txt`. Do NOT rerun
+  `post.js` for that event: renew login if needed, then retry just captions:
+
+  ```sh
+  node youtube-captions.js "$(cat orgs/7/id.txt)"
+  ```
+
+- To verify without changing settings, append `--check`. To see the automation
+  on the desktop, append `--headed`. The browser closes when the command ends.
+  Configure captions before starting OBS: opening Studio while an encoder is
+  already streaming can cause YouTube to begin preview/testing.
+- Google may occasionally require another interactive login. These scripts
+  report that failure; they cannot guarantee an indefinitely valid session.
+  Make sure your cron/scheduling wrapper checks the exit status and preserves
+  stderr instead of continuing to broadcast after a scheduling failure.
+
+Firefox and driver selection:
+
+- Ubuntu Snap Firefox is detected automatically and uses `/snap/bin/geckodriver`
+  (or `/snap/bin/firefox.geckodriver`) plus
+  `/snap/firefox/current/usr/lib/firefox/firefox`. If neither driver command is
+  present, inspect `snap aliases firefox` and the installed Firefox Snap.
+  Use a driver inside the same Snap environment, not a downloaded host driver.
+- With a regular Firefox installation, Selenium Manager finds/downloads a
+  compatible geckodriver on the first run (network access is needed then).
+- Optional environment overrides: `YT_FIREFOX_BINARY` (Firefox executable),
+  `YT_GECKODRIVER` (matching driver executable), `YT_FIREFOX_PROFILE` (dedicated
+  profile directory). Use identical overrides for login, post, and retries.
+  For Snap, the profile must be in a location accessible to the Snap.
+- Only one script may use the profile at once. A crash can leave
+  `~/yt-church-browser/yt-church-automation.lock`. It contains the owning PID;
+  remove it only after checking that process and its dedicated Firefox have
+  exited. Do not delete Firefox's own profile lock while it is running.
+
+Caption tests (no real broadcast creation or Google credentials):
+`node --test youtube-captions.test.cjs`. To also run the local fixture through
+a real headless Firefox, use
+`YT_TEST_FIREFOX=1 node --test youtube-captions.test.cjs`.
+
 Viewer code:
 code.txt
 
