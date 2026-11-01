@@ -1,70 +1,75 @@
-# Getting Started with Create React App
+# Stream dashboard
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Build and run
 
-## Available Scripts
+```bash
+npm install
+npm start
+# Production build:
+npm run build
+```
 
-In the project directory, you can run:
+## Runtime configuration
 
-### `npm start`
+The browser fetches `config.json` beside the deployed `index.html` before starting
+API requests. The request bypasses the browser cache. Edit this file on the asset
+hosting server and reload the page to change settings without rebuilding JavaScript.
+For local development, create the git-ignored `public/config.json`:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+```json
+{
+  "apiBaseUrl": "https://alta.jeffhansen.com/api",
+  "pollIntervalMs": 200
+}
+```
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+`apiBaseUrl` controls all dashboard API requests, including camera controls.
+Absolute HTTP(S) URLs or same-origin relative paths are supported. A different API
+origin must permit the dashboard origin through CORS. This file is public; do not
+put passwords, API keys, or server-side configuration in it.
 
-### `npm test`
+`pollIntervalMs` defaults to 200 ms (five attempts per second for both preview and
+state, up to ten requests per second per dashboard). Requests for each endpoint do
+not overlap, so slow responses reduce the actual rate. Set it to 1000 to restore
+one-second polling. The minimum accepted value is 100 ms.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Configuration is read on page load, not continuously while a page is open. Missing
+or invalid configuration produces a visible startup error instead of sending
+requests to a fallback API. Configure the asset host/CDN to avoid caching this file,
+for example with `Cache-Control: no-store`.
 
-### `npm run build`
+## Deploy
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Build once, then deploy the same assets to different S3 locations with separate
+runtime configs:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm run build
+./deploy.sh --base-url s3://first-bucket/stream/ --config /path/to/first.json
+./deploy.sh --base-url s3://second-bucket/dashboard/ --config /path/to/second.json
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+`--config FILE` reads the selected JSON at deploy time, validates it before any
+remote changes, and uploads it as `config.json` with `Cache-Control: no-store`.
+Relative config paths are resolved from the directory where you run the command.
+Keep environment-specific configs outside Git.
 
-### `npm run eject`
+```bash
+# Upload the current git-ignored public/config.json, even if edited after building:
+./deploy.sh --base-url s3://first-bucket/stream/ --with-config
+# Update assets while preserving that destination's existing config.json:
+./deploy.sh --base-url s3://first-bucket/stream/
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Without `--base-url`, deployment falls back to `baseUrl` in the repository root's
+private `config.json`. When `--base-url` is supplied, that root config is not needed.
+This destination URL is an S3 URL; the public HTTPS asset URL comes from your
+bucket/CDN setup. It is separate from the runtime `apiBaseUrl`.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+For a new destination, use `--config` or `--with-config` so the required runtime
+file exists. No config is uploaded by default. No environment-specific config is
+bundled into the JavaScript. Reload the page after changing the hosted JSON.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+To change only the hosted runtime configuration, upload the edited public JSON
+with `Content-Type: application/json` and `Cache-Control: no-store`; no rebuild is
+required. Each new browser page load reads the new configuration.

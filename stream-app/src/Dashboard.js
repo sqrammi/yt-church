@@ -7,8 +7,6 @@ const { useCallback, useEffect, useRef, useState } = require('react');
 const { Image, Button, Modal } = require('react-bootstrap');
 const { Header, Title, Body, Footer } = Modal;
 
-const base = `https://alta.jeffhansen.com/api`;
-
 const headers = {
   'Content-type': 'application/json',
 };
@@ -18,7 +16,8 @@ function SceneButton({ scene, setScene, currentScene }) {
     onClick={() => setScene({ scene })}>{scene}</Button>
 }
 
-function Dashboard({ password, setPassword }) {
+function Dashboard({ password, setPassword, config }) {
+  const base = config.apiBaseUrl;
   const [ image, setImage ] = useState('');
   const [ confirming, setConfirming ] = useState();
   const [ currentScene, setCurrentScene ] = useState('unknown');
@@ -30,58 +29,75 @@ function Dashboard({ password, setPassword }) {
   const loadingImage = useRef({});
   const loadingState = useRef({});
 
-  const loadImage = useCallback(async () => {
+  const loadImage = useCallback(async (signal) => {
     if (loadingImage.current.loading)
       return;
 
     loadingImage.current.loading = true;
     try {
       const req = await fetch(`${base}/snap`, {
-        method: 'POST', headers, body: JSON.stringify({ password }),
+        method: 'POST', headers, body: JSON.stringify({ password }), signal,
       });
 
-      if (req.headers.get('content-type') === 'image/jpeg')
-        setImage(URL.createObjectURL(await req.blob()));
-      else {
+      if (req.headers.get('content-type')?.split(';')[0] === 'image/jpeg') {
+        const blob = await req.blob();
+        if (!signal.aborted) setImage(URL.createObjectURL(blob));
+      } else {
         const resp = await req.json();
+        if (signal.aborted) return;
         if (resp.unauthorized)
           setPassword('');
         else setImage(black);
       }
     } catch (e) {
-      console.log('error getting image', e);
-      setPassword('');
+      if (!signal.aborted) {
+        console.log('error getting image', e);
+        setPassword('');
+      }
+    } finally {
+      delete loadingImage.current.loading;
     }
-    delete loadingImage.current.loading;
-  }, [ password, setPassword ]);
+  }, [ base, password, setPassword ]);
 
-  const loadState = useCallback(async () => {
+  const loadState = useCallback(async (signal) => {
     if (loadingState.current.loading)
       return;
 
     loadingState.current.loading = true;
     try {
       const req = await fetch(`${base}/state`, {
-        method: 'POST', headers, body: JSON.stringify({ password }),
+        method: 'POST', headers, body: JSON.stringify({ password }), signal,
       });
 
       const resp = await req.json();
+      if (signal.aborted) return;
       setStreaming(!!resp?.streaming);
       setCurrentScene(resp?.scene || 'unknown');
     } catch (e) {
-      console.log('error getting state', e);
+      if (!signal.aborted) console.log('error getting state', e);
+    } finally {
+      delete loadingState.current.loading;
     }
-    delete loadingState.current.loading;
-  }, [ password, setStreaming ]);
+  }, [ base, password ]);
 
   useEffect(() => {
-    const intervalImage = setInterval(loadImage, 1000);
-    const intervalState = setInterval(loadState, 1000);
+    const controller = new AbortController();
+    const refreshImage = () => loadImage(controller.signal);
+    const refreshState = () => loadState(controller.signal);
+    refreshImage();
+    refreshState();
+    const intervalImage = setInterval(refreshImage, config.pollIntervalMs);
+    const intervalState = setInterval(refreshState, config.pollIntervalMs);
     return () => {
       clearInterval(intervalImage);
       clearInterval(intervalState);
+      controller.abort();
     }
-  }, [ loadImage, loadState ]);
+  }, [ loadImage, loadState, config.pollIntervalMs ]);
+
+  useEffect(() => () => {
+    if (image.startsWith('blob:')) URL.revokeObjectURL(image);
+  }, [ image ]);
 
   const imageProps = {};
   imageProps.src = image || black;
