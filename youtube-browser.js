@@ -203,19 +203,32 @@ async function configurePage(driver, { channelId, checkOnly = false, timeout = 3
     }
   }
   await waitFor(driver, 'Automatic English captions and normal latency were not confirmed', async () => isConfigured(await captionState(driver)), timeout);
-  // Leave time for Studio's debounced autosave request before navigating away.
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  // Studio autosaves. Verify on a fresh load; never trust the optimistic toggle.
-  // Retry read-only reloads to allow a slow autosave without toggling it again.
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await driver.navigate().refresh();
-    const refreshedChannel = await readChannel(driver);
-    if (refreshedChannel !== channelId) throw new Error('YouTube channel changed while verifying captions.');
-    await waitFor(driver, 'Caption settings did not reload', () => getVisible(driver, '#captions-enabled-toggle'), timeout);
+  // Studio's optimistic toggle can precede its debounced save by many seconds.
+  // Keep this page alive while verifying in another tab: refreshing the editor
+  // can discard the pending save before YouTube has even sent it.
+  const editorHandle = await driver.getWindowHandle();
+  const settingsUrl = await driver.getCurrentUrl();
+  let verificationHandle;
+  try {
+    await driver.switchTo().newWindow('tab');
+    verificationHandle = await driver.getWindowHandle();
+    await driver.get(settingsUrl);
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (attempt > 0) await driver.navigate().refresh();
+      const refreshedChannel = await readChannel(driver);
+      if (refreshedChannel !== channelId) throw new Error('YouTube channel changed while verifying captions.');
+      await waitFor(driver, 'Caption settings did not reload', () => getVisible(driver, '#captions-enabled-toggle'), timeout);
+      try {
+        await waitFor(driver, 'Caption settings were not saved', async () => isConfigured(await captionState(driver)), Math.min(timeout, 5000));
+        return;
+      } catch (error) { if (attempt === 4) throw error; }
+    }
+  } finally {
     try {
-      await waitFor(driver, 'Caption settings were not saved', async () => isConfigured(await captionState(driver)), Math.min(timeout, 5000));
-      return;
-    } catch (error) { if (attempt === 2) throw error; }
+      if (verificationHandle) await driver.close();
+    } finally {
+      await driver.switchTo().window(editorHandle);
+    }
   }
 }
 
