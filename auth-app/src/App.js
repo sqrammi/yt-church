@@ -16,6 +16,7 @@ function MyLogin() {
     onSuccess: async tokenResponse => {
       const { code } = tokenResponse;
       console.log('code', code);
+      console.log('^^ run node auth-code.js <THIS CODE> to get a refresh token');
     },
     flow: 'auth-code',
     scope: scopes.join(' '),
