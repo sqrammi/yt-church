@@ -8,7 +8,6 @@ const axios = require('axios');
 const { argv } = process;
 const org = argv[2];
 const orgDir = `./orgs/${org}`;
-const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
 const id = String(fs.readFileSync(`${orgDir}/id.txt`)).trim();
 
 oauth2Client.setCredentials({

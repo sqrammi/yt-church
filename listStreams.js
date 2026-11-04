@@ -4,7 +4,6 @@ const { oauth2Client } = require('./api');
 const fs = require('fs');
 const axios = require('axios');
 
-const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
 
 oauth2Client.setCredentials({
   refresh_token: String(fs.readFileSync('./refresh-token.txt')).trim(),

@@ -12,7 +12,6 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
 const { obsPassword } = require('./config.json');
-const apiKey = String(fs.readFileSync('./api-key.txt')).trim();
 const org = String(fs.readFileSync(`./orgs/current`)).trim();
 const orgDir = `./orgs/${org}`;
 const id = String(fs.readFileSync(`${orgDir}/id.txt`)).trim();
