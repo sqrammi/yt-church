@@ -179,12 +179,18 @@ async function clickEnabled(element, description) {
   await element.click();
 }
 
-async function configurePage(driver, { channelId, checkOnly = false, timeout = 30000 } = {}) {
-  const actualChannel = await readChannel(driver);
-  if (actualChannel !== channelId) throw new Error(`Wrong YouTube channel: expected ${channelId}, found ${actualChannel}. ${SETUP_HINT}`);
-  await waitFor(driver, 'Closed captions settings did not appear', () => getVisible(driver, '#captions-enabled-toggle'), timeout);
-  if (!checkOnly) {
-    let state = await captionState(driver);
+async function configurePage(driver, { channelId, checkOnly = false, timeout = 30000,
+  saveDelays = [15000, 30000, 45000] } = {}) {
+  for (const delay of checkOnly ? [0] : saveDelays) {
+    const actualChannel = await readChannel(driver);
+    if (actualChannel !== channelId) throw new Error(`Wrong YouTube channel: expected ${channelId}, found ${actualChannel}. ${SETUP_HINT}`);
+    await waitFor(driver, 'Closed captions settings did not appear', () => getVisible(driver, '#captions-enabled-toggle'), timeout);
+    if (checkOnly) {
+      await waitFor(driver, 'Automatic English captions and normal latency were not confirmed', async () => isConfigured(await captionState(driver)), timeout);
+      return;
+    }
+    const state = await captionState(driver);
+    if (isConfigured(state)) return;
     if (!state.normal) {
       await clickEnabled(await getVisible(driver, '#latency-normal'), 'Normal latency');
       await waitFor(driver, 'Normal latency was not selected', async () => (await captionState(driver)).normal, timeout);
@@ -201,34 +207,17 @@ async function configurePage(driver, { channelId, checkOnly = false, timeout = 3
         namedElement(driver, '[role="option"]', AUTO_CAPTIONS), timeout);
       await clickEnabled(option, 'Automatic captions');
     }
+    await waitFor(driver, 'Automatic English captions and normal latency were not confirmed', async () => isConfigured(await captionState(driver)), timeout);
+    // Give the foreground editor time to autosave. Reload the same event and
+    // retry with a longer wait if YouTube has not persisted the settings yet.
+    await driver.sleep(delay);
+    await driver.navigate().refresh();
   }
-  await waitFor(driver, 'Automatic English captions and normal latency were not confirmed', async () => isConfigured(await captionState(driver)), timeout);
-  // Studio's optimistic toggle can precede its debounced save by many seconds.
-  // Keep this page alive while verifying in another tab: refreshing the editor
-  // can discard the pending save before YouTube has even sent it.
-  const editorHandle = await driver.getWindowHandle();
-  const settingsUrl = await driver.getCurrentUrl();
-  let verificationHandle;
-  try {
-    await driver.switchTo().newWindow('tab');
-    verificationHandle = await driver.getWindowHandle();
-    await driver.get(settingsUrl);
-    for (let attempt = 0; attempt < 5; attempt++) {
-      if (attempt > 0) await driver.navigate().refresh();
-      const refreshedChannel = await readChannel(driver);
-      if (refreshedChannel !== channelId) throw new Error('YouTube channel changed while verifying captions.');
-      await waitFor(driver, 'Caption settings did not reload', () => getVisible(driver, '#captions-enabled-toggle'), timeout);
-      try {
-        await waitFor(driver, 'Caption settings were not saved', async () => isConfigured(await captionState(driver)), Math.min(timeout, 5000));
-        return;
-      } catch (error) { if (attempt === 4) throw error; }
-    }
-  } finally {
-    try {
-      if (verificationHandle) await driver.close();
-    } finally {
-      await driver.switchTo().window(editorHandle);
-    }
+  const actualChannel = await readChannel(driver);
+  if (actualChannel !== channelId) throw new Error('YouTube channel changed while verifying captions.');
+  await waitFor(driver, 'Caption settings did not reload', () => getVisible(driver, '#captions-enabled-toggle'), timeout);
+  if (!isConfigured(await captionState(driver))) {
+    throw new Error(`Caption settings were not saved after ${saveDelays.length} attempts. Retry captions on this existing broadcast; do not recreate it.`);
   }
 }
 
