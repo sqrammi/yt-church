@@ -6,13 +6,14 @@ const process = require('process');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
-const { requireLogin } = require('./youtube-browser');
 
 const execFileAsync = promisify(execFile);
 
 const main = async (args = process.argv.slice(2)) => {
-  // Fail before creating a broadcast if browser login has never been set up.
-  requireLogin();
+  const enableCaptions = !args.includes('--no-cc');
+  args = args.filter(arg => arg !== '--no-cc');
+  // Browser login is only needed when enabling automatic captions.
+  if (enableCaptions) require('./youtube-browser').requireLogin();
 
   const { oauth2Client } = require('./api');
   const { nextMeeting } = require('./next');
@@ -25,7 +26,7 @@ const main = async (args = process.argv.slice(2)) => {
   }
 
   const org = args[argOffset];
-  if (!/^[a-zA-Z0-9_-]+$/.test(org || '')) throw new Error('Usage: node post.js [-w WEEKS] ORG TITLE DAY HOUR MINUTE');
+  if (!/^[a-zA-Z0-9_-]+$/.test(org || '')) throw new Error('Usage: node post.js [--no-cc] [-w WEEKS] ORG TITLE DAY HOUR MINUTE');
   const title = args[argOffset + 1] || 'Sacrament Meeting';
   const next = nextMeeting({
     day: Number.parseInt(args[argOffset + 2], 10),
@@ -73,8 +74,8 @@ const main = async (args = process.argv.slice(2)) => {
         enableMonitorStream: true,
       },
       enableDvr: true,
-      // The public API has no Automatic Captions option. The browser step below
-      // enables it in Studio; disabled here alone does NOT enable auto captions.
+      // Start with captions disabled. Unless --no-cc was given, the browser
+      // step below enables automatic captions (unavailable in the public API).
       closedCaptionsType: 'closedCaptionsDisabled',
       latencyPreference: 'normal',
     },
@@ -86,6 +87,7 @@ const main = async (args = process.argv.slice(2)) => {
     body, { headers });
 
   fs.writeFileSync(`${orgDir}/id.txt`, `${resp.data.id}\n`);
+  if (!enableCaptions) return;
   try {
     // Capture helper output; successful scheduled runs must be completely quiet
     // because cron emails any stdout/stderr. Surface diagnostics only on failure.
